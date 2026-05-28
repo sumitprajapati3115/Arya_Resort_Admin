@@ -114,7 +114,7 @@ const Dashboard = () => {
   const fetchEnquiries = async (token, isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/bookings", {
+      const res = await fetch("https://arya-resort-b.onrender.com/api/bookings", {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -155,7 +155,7 @@ const Dashboard = () => {
     
     const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${id}`, {
+      const res = await fetch(`https://arya-resort-b.onrender.com/api/bookings/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -225,7 +225,7 @@ const Dashboard = () => {
     setUpdating(true);
     const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${editData.id}`, {
+      const res = await fetch(`https://arya-resort-b.onrender.com/api/bookings/${editData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(editData),
@@ -246,7 +246,7 @@ const Dashboard = () => {
     setUpdating(true);
     const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${enq._id}`, {
+      const res = await fetch(`https://arya-resort-b.onrender.com/api/bookings/${enq._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ ...enq, status: "Confirmed" }),
@@ -265,7 +265,7 @@ const Dashboard = () => {
   const fetchEvents = async () => {
     setLoadingEvents(true);
     try {
-      const res = await fetch("http://localhost:5000/api/events");
+      const res = await fetch("https://arya-resort-b.onrender.com/api/events");
       const data = await res.json();
       if (data.success) setEvents(data.data);
     } catch (err) { console.error("Fetch Events Error:", err); } 
@@ -276,7 +276,7 @@ const Dashboard = () => {
     e.preventDefault();
     setUpdating(true);
     const token = localStorage.getItem("adminToken");
-    const url = eventData.id ? `http://localhost:5000/api/events/${eventData.id}` : "http://localhost:5000/api/events/create";
+    const url = eventData.id ? `https://arya-resort-b.onrender.com/api/events/${eventData.id}` : "https://arya-resort-b.onrender.com/api/events/create";
     const method = eventData.id ? "PUT" : "POST";
     
     const formData = new FormData();
@@ -305,7 +305,7 @@ const Dashboard = () => {
     if (!window.confirm("Are you sure you want to delete this event?")) return;
     const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`http://localhost:5000/api/events/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`https://arya-resort-b.onrender.com/api/events/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) { 
         setEvents(events.filter(e => e._id !== id)); 
@@ -324,7 +324,7 @@ const Dashboard = () => {
   const fetchPhotos = async () => {
     setLoadingPhotos(true);
     try {
-      const res = await fetch("http://localhost:5000/api/gallery");
+      const res = await fetch("https://arya-resort-b.onrender.com/api/gallery");
       const data = await res.json();
       if (data.success) setPhotos(data.data);
     } catch (err) { console.error("Fetch Photos Error:", err); } 
@@ -343,7 +343,7 @@ const Dashboard = () => {
     formData.append("category", photoData.category);
 
     try {
-      const res = await fetch("http://localhost:5000/api/gallery/upload", {
+      const res = await fetch("https://arya-resort-b.onrender.com/api/gallery/upload", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }, // FormData me Content-Type nahi dete, browser khud handle karta hai
         body: formData,
@@ -362,7 +362,7 @@ const Dashboard = () => {
     if (!window.confirm("Are you sure you want to delete this photo?")) return;
     const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`http://localhost:5000/api/gallery/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`https://arya-resort-b.onrender.com/api/gallery/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) { 
         setPhotos(photos.filter(p => p._id !== id)); 
@@ -380,7 +380,7 @@ const Dashboard = () => {
   const fetchHero = async () => {
     setLoadingHero(true);
     try {
-      const res = await fetch("http://localhost:5000/api/hero");
+      const res = await fetch("https://arya-resort-b.onrender.com/api/hero");
       const data = await res.json();
       if (data.success) setHeroSlides(data.data);
     } catch (err) { console.error("Fetch Hero Error:", err); } 
@@ -408,7 +408,7 @@ const Dashboard = () => {
       }
     }
 
-    const url = submitId ? `http://localhost:5000/api/hero/${submitId}` : "http://localhost:5000/api/hero/create";
+    const url = submitId ? `https://arya-resort-b.onrender.com/api/hero/${submitId}` : "https://arya-resort-b.onrender.com/api/hero/create";
     try {
       const res = await fetch(url, { method: submitId ? "PUT" : "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
       const data = await res.json();
@@ -425,7 +425,7 @@ const Dashboard = () => {
     if (!window.confirm("Are you sure you want to delete this slide?")) return;
     const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`http://localhost:5000/api/hero/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`https://arya-resort-b.onrender.com/api/hero/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) { 
         setHeroSlides(heroSlides.filter(s => s._id !== id)); 
@@ -444,7 +444,7 @@ const Dashboard = () => {
   const fetchAmenities = async () => {
     setLoadingAmenities(true);
     try {
-      const res = await fetch("http://localhost:5000/api/amenities");
+      const res = await fetch("https://arya-resort-b.onrender.com/api/amenities");
       const data = await res.json();
       if (data.success) setAmenities(data.data);
     } catch (err) { console.error("Fetch Amenities Error:", err); }
@@ -455,7 +455,7 @@ const Dashboard = () => {
     e.preventDefault();
     setUpdating(true);
     const token = localStorage.getItem("adminToken");
-    const url = amenityData.id ? `http://localhost:5000/api/amenities/${amenityData.id}` : "http://localhost:5000/api/amenities/create";
+    const url = amenityData.id ? `https://arya-resort-b.onrender.com/api/amenities/${amenityData.id}` : "https://arya-resort-b.onrender.com/api/amenities/create";
     const formData = new FormData();
     formData.append("title", amenityData.title);
     formData.append("description", amenityData.description);
@@ -474,7 +474,7 @@ const Dashboard = () => {
     if (!window.confirm("Are you sure you want to delete this amenity?")) return;
     const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`http://localhost:5000/api/amenities/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`https://arya-resort-b.onrender.com/api/amenities/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) { setAmenities(amenities.filter(a => a._id !== id)); showToast("Amenity Deleted!"); }
     } catch (err) { console.error("Amenity Delete Error:", err); }
@@ -490,7 +490,7 @@ const Dashboard = () => {
   const fetchTestimonials = async () => {
     setLoadingTestimonials(true);
     try {
-      const res = await fetch("http://localhost:5000/api/testimonials");
+      const res = await fetch("https://arya-resort-b.onrender.com/api/testimonials");
       const data = await res.json();
       if (data.success) setTestimonials(data.data);
     } catch (err) { console.error("Fetch Testimonials Error:", err); }
@@ -501,7 +501,7 @@ const Dashboard = () => {
     e.preventDefault();
     setUpdating(true);
     const token = localStorage.getItem("adminToken");
-    const url = testimonialData.id ? `http://localhost:5000/api/testimonials/${testimonialData.id}` : "http://localhost:5000/api/testimonials/create";
+    const url = testimonialData.id ? `https://arya-resort-b.onrender.com/api/testimonials/${testimonialData.id}` : "https://arya-resort-b.onrender.com/api/testimonials/create";
     const formData = new FormData();
     formData.append("name", testimonialData.name);
     formData.append("role", testimonialData.role);
@@ -522,7 +522,7 @@ const Dashboard = () => {
     if (!window.confirm("Are you sure you want to delete this testimonial?")) return;
     const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`http://localhost:5000/api/testimonials/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`https://arya-resort-b.onrender.com/api/testimonials/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) { setTestimonials(testimonials.filter(t => t._id !== id)); showToast("Testimonial Deleted!"); }
     } catch (err) { console.error("Testimonial Delete Error:", err); }
@@ -538,7 +538,7 @@ const Dashboard = () => {
   const fetchPackages = async () => {
     setLoadingPackages(true);
     try {
-      const res = await fetch("http://localhost:5000/api/packages");
+      const res = await fetch("https://arya-resort-b.onrender.com/api/packages");
       const data = await res.json();
       if (data.success) setPackagesData(data.data);
     } catch (err) { console.error("Fetch Packages Error:", err); }
@@ -549,7 +549,7 @@ const Dashboard = () => {
     e.preventDefault();
     setUpdating(true);
     const token = localStorage.getItem("adminToken");
-    const url = packageForm.id ? `http://localhost:5000/api/packages/${packageForm.id}` : "http://localhost:5000/api/packages/create";
+    const url = packageForm.id ? `https://arya-resort-b.onrender.com/api/packages/${packageForm.id}` : "https://arya-resort-b.onrender.com/api/packages/create";
     try {
       const res = await fetch(url, { method: packageForm.id ? "PUT" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(packageForm) });
       const data = await res.json();
@@ -562,7 +562,7 @@ const Dashboard = () => {
     if (!window.confirm("Are you sure you want to delete this package?")) return;
     const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`http://localhost:5000/api/packages/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`https://arya-resort-b.onrender.com/api/packages/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) { setPackagesData(packagesData.filter(p => p._id !== id)); showToast("Package Deleted!"); }
     } catch (err) { console.error("Package Delete Error:", err); }
@@ -578,7 +578,7 @@ const Dashboard = () => {
   const fetchAnnouncements = async () => {
     setLoadingAnnouncements(true);
     try {
-      const res = await fetch("http://localhost:5000/api/announcements");
+      const res = await fetch("https://arya-resort-b.onrender.com/api/announcements");
       const data = await res.json();
       if (data.success) setAnnouncements(data.data);
     } catch (err) { console.error("Fetch Announcements Error:", err); }
@@ -589,7 +589,7 @@ const Dashboard = () => {
     e.preventDefault();
     setUpdating(true);
     const token = localStorage.getItem("adminToken");
-    const url = announcementData.id ? `http://localhost:5000/api/announcements/${announcementData.id}` : "http://localhost:5000/api/announcements/create";
+    const url = announcementData.id ? `https://arya-resort-b.onrender.com/api/announcements/${announcementData.id}` : "https://arya-resort-b.onrender.com/api/announcements/create";
     try {
       const res = await fetch(url, { method: announcementData.id ? "PUT" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(announcementData) });
       const data = await res.json();
@@ -602,7 +602,7 @@ const Dashboard = () => {
     if (!window.confirm("Are you sure you want to delete this announcement?")) return;
     const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`http://localhost:5000/api/announcements/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`https://arya-resort-b.onrender.com/api/announcements/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) { setAnnouncements(announcements.filter(a => a._id !== id)); showToast("Announcement Deleted!"); }
     } catch (err) { console.error("Announcement Delete Error:", err); }
