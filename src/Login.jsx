@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Lock, Mail } from "lucide-react";
+import { apiService } from "./api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -13,12 +14,7 @@ const Login = () => {
     setError("");
 
     try {
-      const res = await fetch("https://arya-resort-b.onrender.com/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
+      const data = await apiService.post("/auth/login", { email, password });
 
       if (data.success) {
         localStorage.setItem("adminToken", data.token);

@@ -1,6 +1,9 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable no-nested-ternary */
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarDays, Image as ImageIcon, LogOut, Search, Users, CalendarHeart, PhoneCall, Trash2, Edit, X, Plus, UploadCloud, MonitorPlay, CheckCircle, Menu, MessageSquare, Sparkles, Star, User, Download, Gift, Bell, TrendingUp, BarChart3, PieChart, MapPin, Filter, ArrowDownUp, Mail, Clock, Megaphone } from "lucide-react";
+import { LayoutDashboard, CalendarDays, Image as ImageIcon, LogOut, Search, Users, CalendarHeart, PhoneCall, Trash2, Edit, X, Plus, UploadCloud, MonitorPlay, CheckCircle, Menu, MessageSquare, Sparkles, Star, User, Download, Gift, Bell, TrendingUp, BarChart3, PieChart, Filter, ArrowDownUp, Mail, Clock, Megaphone } from "lucide-react";
+import { apiService } from "./api";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -20,6 +23,7 @@ const Dashboard = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewData, setViewData] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [enquiryTab, setEnquiryTab] = useState("general");
 
   // Events States
   const [events, setEvents] = useState([]);
@@ -92,32 +96,43 @@ const Dashboard = () => {
       return;
     }
     
-    if (activeMenu === "dashboard" || activeMenu === "enquiries" || activeMenu === "contacts") {
-      fetchEnquiries(token);
-    } else if (activeMenu === "events") {
-      fetchEvents();
-    } else if (activeMenu === "gallery") {
-      fetchPhotos();
-    } else if (activeMenu === "hero") {
-      fetchHero();
-    } else if (activeMenu === "amenities") {
-      fetchAmenities();
-    } else if (activeMenu === "testimonials") {
-      fetchTestimonials();
-    } else if (activeMenu === "packages") {
-      fetchPackages();
-    } else if (activeMenu === "announcements") {
-      fetchAnnouncements();
+    switch (activeMenu) {
+      case "dashboard":
+      case "enquiries":
+      case "contacts":
+        fetchEnquiries();
+        break;
+      case "events":
+        fetchEvents();
+        break;
+      case "gallery":
+        fetchPhotos();
+        break;
+      case "hero":
+        fetchHero();
+        break;
+      case "amenities":
+        fetchAmenities();
+        break;
+      case "testimonials":
+        fetchTestimonials();
+        break;
+      case "packages":
+        fetchPackages();
+        break;
+      case "announcements":
+        fetchAnnouncements();
+        break;
+      default:
+        break;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate, activeMenu]);
 
-  const fetchEnquiries = async (token, isSilent = false) => {
+  const fetchEnquiries = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const res = await fetch("https://arya-resort-b.onrender.com/api/bookings", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await apiService.get("/bookings");
       if (data.success) {
         // Check for new bookings to trigger pop-up
         if (prevEnquiryCount.current > 0 && data.data.length > prevEnquiryCount.current) {
@@ -140,26 +155,22 @@ const Dashboard = () => {
     if (!token) return;
 
     // Fetch once silently for notifications globally
-    fetchEnquiries(token, true);
+    fetchEnquiries(true);
 
     // Har 15 second mein backend se naya data check karega bina page load kiye
     const interval = setInterval(() => {
-      fetchEnquiries(token, true);
+      fetchEnquiries(true);
     }, 15000);
 
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDeleteEnquiry = async (id) => {
     if (!window.confirm("Are you sure you want to delete this enquiry?")) return;
     
-    const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`https://arya-resort-b.onrender.com/api/bookings/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await apiService.delete(`/bookings/${id}`);
       if (data.success) {
         // Remove deleted enquiry from UI without reloading
         setEnquiries(enquiries.filter(enq => enq._id !== id));
@@ -188,12 +199,13 @@ const Dashboard = () => {
 
   // ================= DOWNLOAD CSV LOGIC =================
   const downloadEnquiriesCSV = () => {
-    if (enquiries.length === 0) {
+    const dataToExport = activeMenu === "contacts" ? filteredAndSortedEnquiries : currentEnquiriesList;
+
+    if (dataToExport.length === 0) {
       showToast("❌ No data to download");
       return;
     }
 
-    const dataToExport = filteredAndSortedEnquiries;
     const headers = ["Client Name", "Phone", "Email", "Address", "Event Date", "Event Type", "Guests", "Message", "Received On (DD/MM/YYYY)"];
     
     const rows = dataToExport.map(enq => [
@@ -223,14 +235,8 @@ const Dashboard = () => {
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
-    const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`https://arya-resort-b.onrender.com/api/bookings/${editData.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(editData),
-      });
-      const data = await res.json();
+      const data = await apiService.put(`/bookings/${editData.id}`, editData);
       if (data.success) {
         setEnquiries(enquiries.map((enq) => (enq._id === editData.id ? data.data : enq)));
         setIsEditModalOpen(false);
@@ -244,14 +250,8 @@ const Dashboard = () => {
   const handleQuickConfirm = async (enq) => {
     if (!window.confirm(`Are you sure you want to CONFIRM the booking for ${enq.name}?`)) return;
     setUpdating(true);
-    const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`https://arya-resort-b.onrender.com/api/bookings/${enq._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...enq, status: "Confirmed" }),
-      });
-      const data = await res.json();
+      const data = await apiService.put(`/bookings/${enq._id}`, { ...enq, status: "Confirmed" });
       if (data.success) {
         setEnquiries(enquiries.map((e) => (e._id === enq._id ? data.data : e)));
         if (isViewModalOpen) setViewData(data.data); // Update Modal live
@@ -265,8 +265,7 @@ const Dashboard = () => {
   const fetchEvents = async () => {
     setLoadingEvents(true);
     try {
-      const res = await fetch("https://arya-resort-b.onrender.com/api/events");
-      const data = await res.json();
+      const data = await apiService.get("/events");
       if (data.success) setEvents(data.data);
     } catch (err) { console.error("Fetch Events Error:", err); } 
     finally { setLoadingEvents(false); }
@@ -275,9 +274,6 @@ const Dashboard = () => {
   const handleEventSubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
-    const token = localStorage.getItem("adminToken");
-    const url = eventData.id ? `https://arya-resort-b.onrender.com/api/events/${eventData.id}` : "https://arya-resort-b.onrender.com/api/events/create";
-    const method = eventData.id ? "PUT" : "POST";
     
     const formData = new FormData();
     formData.append("title", eventData.title);
@@ -286,12 +282,8 @@ const Dashboard = () => {
     else if (eventData.image) formData.append("image", eventData.image); // Retain old image link during edit
 
     try {
-      const res = await fetch(url, {
-        method,
-        headers: { Authorization: `Bearer ${token}` }, // FormData automatically sets multipart boundaries
-        body: formData,
-      });
-      const data = await res.json();
+      const endpoint = eventData.id ? `/events/${eventData.id}` : "/events/create";
+      const data = eventData.id ? await apiService.put(endpoint, formData, true) : await apiService.post(endpoint, formData, true);
       if (data.success) {
         fetchEvents();
         setIsEventModalOpen(false);
@@ -303,10 +295,8 @@ const Dashboard = () => {
 
   const handleDeleteEvent = async (id) => {
     if (!window.confirm("Are you sure you want to delete this event?")) return;
-    const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`https://arya-resort-b.onrender.com/api/events/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
+      const data = await apiService.delete(`/events/${id}`);
       if (data.success) { 
         setEvents(events.filter(e => e._id !== id)); 
         showToast("Event Deleted!"); 
@@ -324,8 +314,7 @@ const Dashboard = () => {
   const fetchPhotos = async () => {
     setLoadingPhotos(true);
     try {
-      const res = await fetch("https://arya-resort-b.onrender.com/api/gallery");
-      const data = await res.json();
+      const data = await apiService.get("/gallery");
       if (data.success) setPhotos(data.data);
     } catch (err) { console.error("Fetch Photos Error:", err); } 
     finally { setLoadingPhotos(false); }
@@ -335,7 +324,6 @@ const Dashboard = () => {
     e.preventDefault();
     if (!photoData.file) return alert("Please select an image file");
     setUpdating(true);
-    const token = localStorage.getItem("adminToken");
     
     const formData = new FormData();
     formData.append("image", photoData.file);
@@ -343,12 +331,7 @@ const Dashboard = () => {
     formData.append("category", photoData.category);
 
     try {
-      const res = await fetch("https://arya-resort-b.onrender.com/api/gallery/upload", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }, // FormData me Content-Type nahi dete, browser khud handle karta hai
-        body: formData,
-      });
-      const data = await res.json();
+      const data = await apiService.post("/gallery/upload", formData, true);
       if (data.success) {
         fetchPhotos();
         setIsPhotoModalOpen(false);
@@ -360,10 +343,8 @@ const Dashboard = () => {
 
   const handleDeletePhoto = async (id) => {
     if (!window.confirm("Are you sure you want to delete this photo?")) return;
-    const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`https://arya-resort-b.onrender.com/api/gallery/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
+      const data = await apiService.delete(`/gallery/${id}`);
       if (data.success) { 
         setPhotos(photos.filter(p => p._id !== id)); 
         showToast("Photo Deleted!"); 
@@ -380,8 +361,7 @@ const Dashboard = () => {
   const fetchHero = async () => {
     setLoadingHero(true);
     try {
-      const res = await fetch("https://arya-resort-b.onrender.com/api/hero");
-      const data = await res.json();
+      const data = await apiService.get("/hero");
       if (data.success) setHeroSlides(data.data);
     } catch (err) { console.error("Fetch Hero Error:", err); } 
     finally { setLoadingHero(false); }
@@ -390,7 +370,6 @@ const Dashboard = () => {
   const handleHeroSubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
-    const token = localStorage.getItem("adminToken");
     const formData = new FormData();
     if (heroData.file) formData.append("media", heroData.file);
     formData.append("title", heroData.title);
@@ -408,10 +387,9 @@ const Dashboard = () => {
       }
     }
 
-    const url = submitId ? `https://arya-resort-b.onrender.com/api/hero/${submitId}` : "https://arya-resort-b.onrender.com/api/hero/create";
+    const endpoint = submitId ? `/hero/${submitId}` : "/hero/create";
     try {
-      const res = await fetch(url, { method: submitId ? "PUT" : "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
-      const data = await res.json();
+      const data = submitId ? await apiService.put(endpoint, formData, true) : await apiService.post(endpoint, formData, true);
       if (data.success) { 
         fetchHero(); 
         setIsHeroModalOpen(false); 
@@ -423,10 +401,8 @@ const Dashboard = () => {
 
   const handleDeleteHero = async (id) => {
     if (!window.confirm("Are you sure you want to delete this slide?")) return;
-    const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`https://arya-resort-b.onrender.com/api/hero/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
+      const data = await apiService.delete(`/hero/${id}`);
       if (data.success) { 
         setHeroSlides(heroSlides.filter(s => s._id !== id)); 
         showToast("Slide Deleted!"); 
@@ -444,8 +420,7 @@ const Dashboard = () => {
   const fetchAmenities = async () => {
     setLoadingAmenities(true);
     try {
-      const res = await fetch("https://arya-resort-b.onrender.com/api/amenities");
-      const data = await res.json();
+      const data = await apiService.get("/amenities");
       if (data.success) setAmenities(data.data);
     } catch (err) { console.error("Fetch Amenities Error:", err); }
     finally { setLoadingAmenities(false); }
@@ -454,8 +429,7 @@ const Dashboard = () => {
   const handleAmenitySubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
-    const token = localStorage.getItem("adminToken");
-    const url = amenityData.id ? `https://arya-resort-b.onrender.com/api/amenities/${amenityData.id}` : "https://arya-resort-b.onrender.com/api/amenities/create";
+    const endpoint = amenityData.id ? `/amenities/${amenityData.id}` : "/amenities/create";
     const formData = new FormData();
     formData.append("title", amenityData.title);
     formData.append("description", amenityData.description);
@@ -463,8 +437,7 @@ const Dashboard = () => {
     else if (amenityData.image) formData.append("image", amenityData.image);
 
     try {
-      const res = await fetch(url, { method: amenityData.id ? "PUT" : "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
-      const data = await res.json();
+      const data = amenityData.id ? await apiService.put(endpoint, formData, true) : await apiService.post(endpoint, formData, true);
       if (data.success) { fetchAmenities(); setIsAmenityModalOpen(false); showToast("Amenity Saved Successfully!"); } else showToast("❌ " + (data.message || "Failed to save"));
     } catch (err) { console.error("Amenity Save Error:", err); }
     finally { setUpdating(false); }
@@ -472,10 +445,8 @@ const Dashboard = () => {
 
   const handleDeleteAmenity = async (id) => {
     if (!window.confirm("Are you sure you want to delete this amenity?")) return;
-    const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`https://arya-resort-b.onrender.com/api/amenities/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
+      const data = await apiService.delete(`/amenities/${id}`);
       if (data.success) { setAmenities(amenities.filter(a => a._id !== id)); showToast("Amenity Deleted!"); }
     } catch (err) { console.error("Amenity Delete Error:", err); }
   };
@@ -490,8 +461,7 @@ const Dashboard = () => {
   const fetchTestimonials = async () => {
     setLoadingTestimonials(true);
     try {
-      const res = await fetch("https://arya-resort-b.onrender.com/api/testimonials");
-      const data = await res.json();
+      const data = await apiService.get("/testimonials");
       if (data.success) setTestimonials(data.data);
     } catch (err) { console.error("Fetch Testimonials Error:", err); }
     finally { setLoadingTestimonials(false); }
@@ -500,8 +470,7 @@ const Dashboard = () => {
   const handleTestimonialSubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
-    const token = localStorage.getItem("adminToken");
-    const url = testimonialData.id ? `https://arya-resort-b.onrender.com/api/testimonials/${testimonialData.id}` : "https://arya-resort-b.onrender.com/api/testimonials/create";
+    const endpoint = testimonialData.id ? `/testimonials/${testimonialData.id}` : "/testimonials/create";
     const formData = new FormData();
     formData.append("name", testimonialData.name);
     formData.append("role", testimonialData.role);
@@ -511,8 +480,7 @@ const Dashboard = () => {
     else if (testimonialData.image) formData.append("image", testimonialData.image);
 
     try {
-      const res = await fetch(url, { method: testimonialData.id ? "PUT" : "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
-      const data = await res.json();
+      const data = testimonialData.id ? await apiService.put(endpoint, formData, true) : await apiService.post(endpoint, formData, true);
       if (data.success) { fetchTestimonials(); setIsTestimonialModalOpen(false); showToast("Testimonial Saved Successfully!"); } else showToast("❌ " + (data.message || "Failed to save"));
     } catch (err) { console.error("Testimonial Save Error:", err); }
     finally { setUpdating(false); }
@@ -520,10 +488,8 @@ const Dashboard = () => {
 
   const handleDeleteTestimonial = async (id) => {
     if (!window.confirm("Are you sure you want to delete this testimonial?")) return;
-    const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`https://arya-resort-b.onrender.com/api/testimonials/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
+      const data = await apiService.delete(`/testimonials/${id}`);
       if (data.success) { setTestimonials(testimonials.filter(t => t._id !== id)); showToast("Testimonial Deleted!"); }
     } catch (err) { console.error("Testimonial Delete Error:", err); }
   };
@@ -538,8 +504,7 @@ const Dashboard = () => {
   const fetchPackages = async () => {
     setLoadingPackages(true);
     try {
-      const res = await fetch("https://arya-resort-b.onrender.com/api/packages");
-      const data = await res.json();
+      const data = await apiService.get("/packages");
       if (data.success) setPackagesData(data.data);
     } catch (err) { console.error("Fetch Packages Error:", err); }
     finally { setLoadingPackages(false); }
@@ -548,11 +513,9 @@ const Dashboard = () => {
   const handlePackageSubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
-    const token = localStorage.getItem("adminToken");
-    const url = packageForm.id ? `https://arya-resort-b.onrender.com/api/packages/${packageForm.id}` : "https://arya-resort-b.onrender.com/api/packages/create";
     try {
-      const res = await fetch(url, { method: packageForm.id ? "PUT" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(packageForm) });
-      const data = await res.json();
+      const endpoint = packageForm.id ? `/packages/${packageForm.id}` : "/packages/create";
+      const data = packageForm.id ? await apiService.put(endpoint, packageForm) : await apiService.post(endpoint, packageForm);
       if (data.success) { fetchPackages(); setIsPackageModalOpen(false); showToast("Package Saved Successfully!"); } else showToast("❌ " + (data.message || "Failed to save"));
     } catch (err) { console.error("Package Save Error:", err); }
     finally { setUpdating(false); }
@@ -560,10 +523,8 @@ const Dashboard = () => {
 
   const handleDeletePackage = async (id) => {
     if (!window.confirm("Are you sure you want to delete this package?")) return;
-    const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`https://arya-resort-b.onrender.com/api/packages/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
+      const data = await apiService.delete(`/packages/${id}`);
       if (data.success) { setPackagesData(packagesData.filter(p => p._id !== id)); showToast("Package Deleted!"); }
     } catch (err) { console.error("Package Delete Error:", err); }
   };
@@ -578,8 +539,7 @@ const Dashboard = () => {
   const fetchAnnouncements = async () => {
     setLoadingAnnouncements(true);
     try {
-      const res = await fetch("https://arya-resort-b.onrender.com/api/announcements");
-      const data = await res.json();
+      const data = await apiService.get("/announcements");
       if (data.success) setAnnouncements(data.data);
     } catch (err) { console.error("Fetch Announcements Error:", err); }
     finally { setLoadingAnnouncements(false); }
@@ -588,11 +548,9 @@ const Dashboard = () => {
   const handleAnnouncementSubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
-    const token = localStorage.getItem("adminToken");
-    const url = announcementData.id ? `https://arya-resort-b.onrender.com/api/announcements/${announcementData.id}` : "https://arya-resort-b.onrender.com/api/announcements/create";
     try {
-      const res = await fetch(url, { method: announcementData.id ? "PUT" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(announcementData) });
-      const data = await res.json();
+      const endpoint = announcementData.id ? `/announcements/${announcementData.id}` : "/announcements/create";
+      const data = announcementData.id ? await apiService.put(endpoint, announcementData) : await apiService.post(endpoint, announcementData);
       if (data.success) { fetchAnnouncements(); setIsAnnouncementModalOpen(false); showToast("Announcement Saved Successfully!"); } else showToast("❌ " + (data.message || "Failed to save"));
     } catch (err) { console.error("Announcement Save Error:", err); }
     finally { setUpdating(false); }
@@ -600,10 +558,8 @@ const Dashboard = () => {
 
   const handleDeleteAnnouncement = async (id) => {
     if (!window.confirm("Are you sure you want to delete this announcement?")) return;
-    const token = localStorage.getItem("adminToken");
     try {
-      const res = await fetch(`https://arya-resort-b.onrender.com/api/announcements/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
+      const data = await apiService.delete(`/announcements/${id}`);
       if (data.success) { setAnnouncements(announcements.filter(a => a._id !== id)); showToast("Announcement Deleted!"); }
     } catch (err) { console.error("Announcement Delete Error:", err); }
   };
@@ -617,8 +573,11 @@ const Dashboard = () => {
   // ================= FILTER & SORT LOGIC (ENQUIRIES) =================
   const uniqueEventTypes = useMemo(() => {
     let base = enquiries;
-    if (activeMenu === "enquiries") base = enquiries.filter(e => e.eventType !== "Contact Inquiry");
-    if (activeMenu === "contacts") base = enquiries.filter(e => e.eventType === "Contact Inquiry");
+    if (activeMenu === "enquiries") {
+      base = enquiries.filter(e => e.eventType !== "Contact Inquiry");
+    } else if (activeMenu === "contacts") {
+      base = enquiries.filter(e => e.eventType === "Contact Inquiry");
+    }
     const types = new Set(base.map(e => e.eventType).filter(Boolean));
     return ["all", ...Array.from(types)];
   }, [enquiries, activeMenu]);
@@ -644,15 +603,29 @@ const Dashboard = () => {
 
     // Sorting
     sorted.sort((a, b) => {
-        const dateA = new Date(a.createdAt);
-        const dateB = new Date(b.createdAt);
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
         return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
     });
 
     // Filtering
-    if (filterType !== "all") return sorted.filter(enq => enq.eventType === filterType);
+    if (filterType !== "all") {
+      return sorted.filter(enq => enq.eventType === filterType);
+    }
     return sorted;
   }, [enquiries, sortOrder, filterType, activeMenu, searchQuery]);
+
+  const generalEnquiriesList = useMemo(() => {
+    return filteredAndSortedEnquiries.filter(e => !(e.eventType && e.eventType.startsWith("Package:")));
+  }, [filteredAndSortedEnquiries]);
+
+  const packageEnquiriesList = useMemo(() => {
+    return filteredAndSortedEnquiries.filter(e => e.eventType && e.eventType.startsWith("Package:"));
+  }, [filteredAndSortedEnquiries]);
+
+  const currentEnquiriesList = useMemo(() => {
+    return enquiryTab === "packages" ? packageEnquiriesList : generalEnquiriesList;
+  }, [enquiryTab, packageEnquiriesList, generalEnquiriesList]);
 
   // ================= ANALYTICS LOGIC =================
   const monthlyData = useMemo(() => {
@@ -786,7 +759,7 @@ const Dashboard = () => {
             onClick={() => handleMenuClick("enquiries")}
             className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all duration-300 ${activeMenu === "enquiries" ? "bg-gradient-to-r from-[#e6b854] to-[#d4a342] text-[#391827] shadow-[0_0_15px_rgba(230,184,84,0.3)]" : "text-white/70 hover:bg-gradient-to-r hover:from-[#e6b854] hover:to-[#d4a342] hover:text-[#391827] hover:shadow-[0_0_15px_rgba(230,184,84,0.3)] hover:translate-x-1"}`}
           >
-            <Users className="w-5 h-5" /> Enquiries
+            <Users className="w-5 h-5 shrink-0" /><span className="truncate">Enquiries & Packages</span>
           </button>
           <button 
             onClick={() => handleMenuClick("events")}
@@ -1050,10 +1023,34 @@ const Dashboard = () => {
           {activeMenu === "enquiries" && (
             <div className="space-y-6">
 
-              {/* Data Table */}
+              {/* NEW TABS FOR GENERAL VS PACKAGE ENQUIRIES */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-2">
+                <div
+                  onClick={() => setEnquiryTab("general")}
+                  className={`p-6 rounded-2xl shadow-sm border cursor-pointer transition-all duration-300 flex items-center justify-between ${enquiryTab === 'general' ? 'bg-gradient-to-br from-[#e6b854] to-[#d4a342] text-[#391827] border-[#e6b854] shadow-[0_4px_20px_rgba(230,184,84,0.4)] scale-[1.02]' : 'bg-white border-gray-200 hover:shadow-md hover:border-[#e6b854]/50 text-gray-700'}`}
+                >
+                  <div>
+                    <h3 className="text-xl font-extrabold mb-1">General Enquiries</h3>
+                    <p className={`text-sm font-medium ${enquiryTab === 'general' ? 'text-[#391827]/80' : 'text-gray-500'}`}>Regular event bookings</p>
+                  </div>
+                  <div className={`text-3xl font-black ${enquiryTab === 'general' ? 'text-[#391827]' : 'text-gray-300'}`}>{generalEnquiriesList.length}</div>
+                </div>
+                <div
+                  onClick={() => setEnquiryTab("packages")}
+                  className={`p-6 rounded-2xl shadow-sm border cursor-pointer transition-all duration-300 flex items-center justify-between ${enquiryTab === 'packages' ? 'bg-gradient-to-br from-[#391827] to-[#2d111e] text-[#e6b854] border-[#391827] shadow-[0_4px_20px_rgba(57,24,39,0.4)] scale-[1.02]' : 'bg-white border-gray-200 hover:shadow-md hover:border-[#391827]/50 text-gray-700'}`}
+                >
+                  <div>
+                    <h3 className="text-xl font-extrabold mb-1">Package Enquiries</h3>
+                    <p className={`text-sm font-medium ${enquiryTab === 'packages' ? 'text-[#e6b854]/80' : 'text-gray-500'}`}>Specific package bookings</p>
+                  </div>
+                  <div className={`text-3xl font-black ${enquiryTab === 'packages' ? 'text-[#e6b854]' : 'text-gray-300'}`}>{packageEnquiriesList.length}</div>
+                </div>
+              </div>
+
+              {/* Dynamic Data Table */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white">
-                  <h2 className="text-lg font-bold text-gray-800 shrink-0">Recent Bookings ({filteredAndSortedEnquiries.length})</h2>
+                  <h2 className="text-lg font-bold text-gray-800 shrink-0">{enquiryTab === "packages" ? "Package Enquiries" : "General Bookings"} ({currentEnquiriesList.length})</h2>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                     {/* Filter Dropdown */}
                     <div className="relative w-full sm:w-auto">
@@ -1083,7 +1080,7 @@ const Dashboard = () => {
                     <div className="text-center text-gray-500 py-20 animate-pulse font-medium">
                       Loading Enquiries Data...
                     </div>
-                  ) : filteredAndSortedEnquiries.length > 0 ? (
+                  ) : currentEnquiriesList.length > 0 ? (
                     <table className="w-full text-left border-collapse whitespace-nowrap">
                       <thead className="sticky top-0 z-10 bg-gray-50 shadow-sm">
                         <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-widest border-b border-gray-100">
@@ -1098,7 +1095,7 @@ const Dashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="text-gray-600 text-sm divide-y divide-gray-50">
-                        {filteredAndSortedEnquiries.map((enq) => (
+                        {currentEnquiriesList.map((enq) => (
                           <tr key={enq._id} className="hover:bg-orange-50/30 transition-colors duration-200">
                             <td className="px-6 py-4 font-bold text-gray-800">{enq.name}</td>
                             <td className="px-6 py-4">
@@ -1118,7 +1115,7 @@ const Dashboard = () => {
                               </span>
                               {enq.message && (
                                 <div className="text-xs text-gray-500 mt-2 whitespace-normal break-words min-w-[150px] max-w-[200px] italic">
-                                  "{enq.message}"
+                                  &quot;{enq.message}&quot;
                                 </div>
                               )}
                             </td>
@@ -1127,14 +1124,10 @@ const Dashboard = () => {
                               {new Date(enq.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </td>
                             <td className="px-6 py-4 text-center">
-                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider border ${
-                                enq.status === 'Confirmed' ? 'bg-green-50 text-green-700 border-green-200' :
-                                enq.status === 'Cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
-                                'bg-yellow-50 text-yellow-700 border-yellow-200 animate-pulse'
-                              }`}>
-                                {enq.status === 'Confirmed' && "✅"}
-                                {enq.status === 'Cancelled' && "❌"}
-                                {(!enq.status || enq.status === 'Pending') && "⏳"}
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider border ${enq.status === 'Confirmed' ? 'bg-green-50 text-green-700 border-green-200' : ''} ${enq.status === 'Cancelled' ? 'bg-red-50 text-red-700 border-red-200' : ''} ${(!enq.status || enq.status === 'Pending') ? 'bg-yellow-50 text-yellow-700 border-yellow-200 animate-pulse' : ''}`}>
+                              {enq.status === 'Confirmed' ? "✅" : ""}
+                              {enq.status === 'Cancelled' ? "❌" : ""}
+                              {(!enq.status || enq.status === 'Pending') ? "⏳" : ""}
                                 {enq.status || 'Pending'}
                               </span>
                             </td>
@@ -1319,7 +1312,7 @@ const Dashboard = () => {
                   ) : (
                     <div className="text-center py-24">
                       <p className="text-xl font-bold text-gray-400">No Events Added Yet</p>
-                      <p className="text-sm text-gray-400 mt-2">Click on 'Add New Event' to create your first event package.</p>
+                      <p className="text-sm text-gray-400 mt-2">Click on &apos;Add New Event&apos; to create your first event package.</p>
                     </div>
                   )}
                 </div>
@@ -1366,7 +1359,7 @@ const Dashboard = () => {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center py-24">
                   <ImageIcon className="w-16 h-16 text-gray-200 mx-auto mb-4" />
                   <p className="text-xl font-bold text-gray-400">No Photos Uploaded Yet</p>
-                  <p className="text-sm text-gray-400 mt-2">Click on 'Upload Photo' to add images to your gallery.</p>
+                  <p className="text-sm text-gray-400 mt-2">Click on &apos;Upload Photo&apos; to add images to your gallery.</p>
                 </div>
               )}
             </div>
@@ -1482,7 +1475,7 @@ const Dashboard = () => {
                   ) : (
                     <div className="text-center py-24">
                       <p className="text-xl font-bold text-gray-400">No Amenities Added</p>
-                      <p className="text-sm text-gray-400 mt-2">Click on 'Add New Amenity' to list your resort's features.</p>
+                      <p className="text-sm text-gray-400 mt-2">Click on &apos;Add New Amenity&apos; to list your resort&apos;s features.</p>
                     </div>
                   )}
                 </div>
@@ -1540,7 +1533,7 @@ const Dashboard = () => {
                                 ))}
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-gray-600 whitespace-normal break-words min-w-[200px] max-w-[350px]">"{t.message}"</td>
+                            <td className="px-6 py-4 text-gray-600 whitespace-normal break-words min-w-[200px] max-w-[350px]">&quot;{t.message}&quot;</td>
                             <td className="px-6 py-4 text-center">
                               <div className="flex items-center justify-center gap-2">
                                 <button onClick={() => openTestimonialModal(t)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4" /></button>
@@ -1620,7 +1613,7 @@ const Dashboard = () => {
                   ) : (
                     <div className="text-center py-24">
                       <p className="text-xl font-bold text-gray-400">No Packages Added</p>
-                      <p className="text-sm text-gray-400 mt-2">Click on 'Add New Package' to create your first pricing plan.</p>
+                      <p className="text-sm text-gray-400 mt-2">Click on &apos;Add New Package&apos; to create your first pricing plan.</p>
                     </div>
                   )}
                 </div>
@@ -1693,7 +1686,7 @@ const Dashboard = () => {
                         <Megaphone className="w-12 h-12 text-[#e6b854] animate-bounce" />
                       </div>
                       <p className="text-xl font-extrabold text-[#391827]">No Offers Running</p>
-                      <p className="text-sm text-gray-500 mt-2 max-w-sm">You haven't added any announcements yet. Create one to show a scrolling ticker on the website.</p>
+                      <p className="text-sm text-gray-500 mt-2 max-w-sm">You haven&apos;t added any announcements yet. Create one to show a scrolling ticker on the website.</p>
                     </div>
                   )}
                 </div>
@@ -2071,7 +2064,7 @@ const Dashboard = () => {
                     <div className="relative">
                       <select value={packageForm.featured} onChange={(e) => setPackageForm({...packageForm, featured: e.target.value === "true"})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#e6b854] focus:ring-1 focus:ring-[#e6b854] transition-all appearance-none cursor-pointer">
                         <option value="false">Standard Package (White Background)</option>
-                        <option value="true">Make it "Most Popular" (Maroon Theme)</option>
+                        <option value="true">Make it &quot;Most Popular&quot; (Maroon Theme)</option>
                       </select>
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -2157,7 +2150,7 @@ const Dashboard = () => {
                 <div><p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Event Type</p><span className="inline-block bg-[#e6b854]/20 text-[#391827] px-2.5 py-0.5 rounded-md text-xs font-bold border border-[#e6b854]/30">{viewData.eventType}</span></div>
                 <div><p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Guests / Date</p><p className="font-semibold text-gray-800">{viewData.guests} • {formatEventDate(viewData.eventDate)}</p></div>
               </div>
-              {viewData.message && <div><p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Message</p><p className="text-sm text-gray-600 bg-white p-3 rounded-lg border border-gray-100">"{viewData.message}"</p></div>}
+              {viewData.message && <div><p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Message</p><p className="text-sm text-gray-600 bg-white p-3 rounded-lg border border-gray-100">&quot;{viewData.message}&quot;</p></div>}
             </div>
             
             <div className="grid grid-cols-2 gap-4 mt-6">
