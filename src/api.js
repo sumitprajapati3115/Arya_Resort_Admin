@@ -1,5 +1,5 @@
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://arya-resort-b.onrender.com/api' 'https://arya-resort1.onrender.com';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://arya-resort-b.onrender.com/api';
 
 
 const getHeaders = (isFormData = false) => {
