@@ -2,7 +2,7 @@
 /* eslint-disable no-nested-ternary */
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarDays, Image as ImageIcon, LogOut, Search, Users, CalendarHeart, PhoneCall, Trash2, Edit, X, Plus, UploadCloud, MonitorPlay, CheckCircle, Menu, MessageSquare, Sparkles, Star, User, Download, Gift, Bell, TrendingUp, BarChart3, PieChart, Filter, ArrowDownUp, Mail, Clock, Megaphone } from "lucide-react";
+import { LayoutDashboard, CalendarDays, Image as ImageIcon, LogOut, Search, Users, CalendarHeart, PhoneCall, Trash2, Edit, X, Plus, UploadCloud, MonitorPlay, CheckCircle, Menu, MessageSquare, Sparkles, Star, User, Download, Gift, Bell, TrendingUp, BarChart3, PieChart, Filter, ArrowDownUp, Mail, Clock, Megaphone, Settings, Lock } from "lucide-react";
 import { apiService } from "./api";
 
 const Dashboard = () => {
@@ -66,6 +66,10 @@ const Dashboard = () => {
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
   const [announcementData, setAnnouncementData] = useState({ id: "", text: "", isActive: true });
+
+  // Settings / Password States
+  const [passwordData, setPasswordData] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // ================= UTILITY: DATE FORMATTER =================
   const formatEventDate = (dateStr) => {
@@ -679,10 +683,43 @@ const Dashboard = () => {
   const totalContacts = useMemo(() => enquiries.filter(e => e.eventType === "Contact Inquiry").length, [enquiries]);
   const totalBookings = useMemo(() => enquiries.filter(e => e.eventType !== "Contact Inquiry").length, [enquiries]);
 
+  // ================= SETTINGS LOGIC =================
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      showToast("❌ New passwords do not match!");
+      return;
+    }
+    if (passwordData.newPassword.length < 6) {
+      showToast("❌ Password must be at least 6 characters long!");
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      const data = await apiService.post("/auth/change-password", {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      if (data.success) {
+        showToast("Password changed successfully! 🔐");
+        setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      } else {
+        showToast("❌ " + (data.message || "Failed to change password"));
+      }
+    } catch (err) {
+      console.error("Password Change Error:", err);
+      showToast("❌ " + (err?.response?.data?.message || "Failed to change password"));
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   // ================= GENERAL =================
   const handleLogout = () => {
-    localStorage.removeItem("adminToken");
-    navigate("/login");
+    if (window.confirm("Are you sure you want to logout?")) {
+      localStorage.removeItem("adminToken");
+      navigate("/login");
+    }
   };
 
   const handleMenuClick = (menu) => {
@@ -701,30 +738,25 @@ const Dashboard = () => {
 
     {/* Toast / SMS Notification Component */}
     {toastMsg && (
-      <div className="fixed top-6 right-6 z-[99999] bg-green-50 text-green-800 px-6 py-4 rounded-2xl shadow-2xl font-bold flex items-center gap-3 border-2 border-green-200 transition-all duration-300">
+      <div className={`fixed top-6 right-6 z-[99999] px-6 py-4 rounded-2xl shadow-2xl font-bold flex items-center gap-3 border-2 transition-all duration-300 ${toastMsg.includes("❌") ? "bg-red-50 text-red-800 border-red-200" : "bg-green-50 text-green-800 border-green-200"}`}>
         {!toastMsg.includes("❌") && <CheckCircle className="w-6 h-6 text-green-500" />}
         {toastMsg}
       </div>
     )}
+    
 
     <div className="flex h-screen bg-gray-50">
       {/* Mobile Sidebar Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+      <div 
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden transition-all duration-500 ease-in-out ${isMobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"}`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
 
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#391827] text-white flex flex-col transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 shadow-2xl ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="p-5 border-b border-white/10 relative shrink-0 flex items-center gap-4 bg-gradient-to-b from-black/20 to-transparent">
-          <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(230,184,84,0.4)] border-[2px] border-[#e6b854] relative group overflow-hidden cursor-pointer">
-            <img src="/logo.png" alt="Arya Resort" onError={(e) => { e.target.onerror = null; e.target.src = "https://ui-avatars.com/api/?name=A&background=e6b854&color=391827&bold=true&font-size=0.5"; }} className="w-full h-full object-contain p-1.5 group-hover:scale-110 transition-transform duration-500" />
-            <div className="absolute inset-0 rounded-full border border-[#e6b854] animate-ping opacity-30"></div>
-          </div>
-          <div className="flex flex-col text-left">
-            <h2 className="text-2xl font-extrabold text-[#e6b854] tracking-widest drop-shadow-md">ARYA</h2>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#391827] text-white flex flex-col transform transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] will-change-transform md:relative md:translate-x-0 shadow-2xl ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <div className="p-6 border-b border-white/10 relative shrink-0 flex items-center justify-center bg-gradient-to-b from-black/20 to-transparent">
+          <div className="flex flex-col items-center text-center">
+            <h2 className="text-3xl font-extrabold text-[#e6b854] tracking-widest drop-shadow-md">ARYA</h2>
             <p className="text-[10px] text-white/70 mt-0.5 uppercase tracking-[0.2em] font-medium">Admin Panel</p>
           </div>
           <button className="absolute top-4 right-4 md:hidden text-white/60 hover:text-white" onClick={() => setIsMobileMenuOpen(false)}><X className="w-5 h-5"/></button>
@@ -791,6 +823,12 @@ const Dashboard = () => {
           >
             <MessageSquare className="w-5 h-5" /> Testimonials
           </button>
+          <button 
+            onClick={() => handleMenuClick("settings")}
+            className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all duration-300 ${activeMenu === "settings" ? "bg-gradient-to-r from-[#e6b854] to-[#d4a342] text-[#391827] shadow-[0_0_15px_rgba(230,184,84,0.3)]" : "text-white/70 hover:bg-gradient-to-r hover:from-[#e6b854] hover:to-[#d4a342] hover:text-[#391827] hover:shadow-[0_0_15px_rgba(230,184,84,0.3)] hover:translate-x-1"}`}
+          >
+            <Settings className="w-5 h-5" /> Settings
+          </button>
         </nav>
         
         <div className="p-4 border-t border-white/10 shrink-0">
@@ -836,7 +874,10 @@ const Dashboard = () => {
               >
                 <Bell className="w-6 h-6" />
                 {unreadEnquiries.length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                  <span className="absolute top-1 right-1 flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#e6b854] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-gradient-to-r from-[#e6b854] to-[#d4a342] border-[2px] border-white shadow-sm"></span>
+                  </span>
                 )}
               </button>
 
@@ -847,7 +888,19 @@ const Dashboard = () => {
                   <div className="absolute right-0 mt-3 w-[85vw] sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 origin-top-right transform transition-all">
                     <div className="bg-[#391827] text-white px-5 py-4 flex justify-between items-center">
                       <h3 className="font-bold text-sm">New Enquiries</h3>
-                      <span className="bg-[#e6b854] text-[#391827] text-xs font-bold px-2 py-0.5 rounded-full">{unreadEnquiries.length} New</span>
+                      <div className="flex items-center gap-3">
+                        {unreadEnquiries.length > 0 && (
+                          <button 
+                            onClick={() => {
+                              setReadNotifications(prev => new Set([...prev, ...unreadEnquiries.map(e => e._id)]));
+                            }}
+                            className="text-[11px] text-white/70 hover:text-white underline underline-offset-2 transition-colors cursor-pointer"
+                          >
+                            Mark all as read
+                          </button>
+                        )}
+                        <span className="bg-[#e6b854] text-[#391827] text-xs font-bold px-2 py-0.5 rounded-full">{unreadEnquiries.length} New</span>
+                      </div>
                     </div>
                     <div className="max-h-80 overflow-y-auto custom-scrollbar divide-y divide-gray-50">
                       {unreadEnquiries.length > 0 ? (
@@ -1096,7 +1149,7 @@ const Dashboard = () => {
                       </thead>
                       <tbody className="text-gray-600 text-sm divide-y divide-gray-50">
                         {currentEnquiriesList.map((enq) => (
-                          <tr key={enq._id} className="hover:bg-orange-50/30 transition-colors duration-200">
+                          <tr key={enq._id} className="hover:bg-orange-50/30 transition-colors duration-200 cursor-pointer" onClick={() => { setViewData(enq); setIsViewModalOpen(true); }}>
                             <td className="px-6 py-4 font-bold text-gray-800">{enq.name}</td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2 mb-1">
@@ -1140,12 +1193,13 @@ const Dashboard = () => {
                                     rel="noopener noreferrer" 
                                     className="p-2 text-green-600 bg-green-50 hover:bg-green-100 hover:scale-110 rounded-lg transition-all shadow-sm border border-green-200"
                                     title="Send WhatsApp SMS"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
                                     <MessageSquare className="w-4 h-4" />
                                   </a>
                                 ) : (
                                   <button 
-                                    onClick={() => handleQuickConfirm(enq)}
+                                    onClick={(e) => { e.stopPropagation(); handleQuickConfirm(enq); }}
                                     className="p-2 text-green-600 bg-green-50 hover:bg-green-100 hover:scale-110 rounded-lg transition-all shadow-sm border border-green-200"
                                     title="Quick Confirm Booking"
                                   >
@@ -1153,14 +1207,14 @@ const Dashboard = () => {
                                   </button>
                                 )}
                                 <button 
-                                  onClick={() => openEditModal(enq)}
+                                  onClick={(e) => { e.stopPropagation(); openEditModal(enq); }}
                                   className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
                                   title="Edit Enquiry"
                                 >
                                   <Edit className="w-4 h-4" />
                                 </button>
                                 <button 
-                                  onClick={() => handleDeleteEnquiry(enq._id)}
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteEnquiry(enq._id); }}
                                   className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                   title="Delete Enquiry"
                                 >
@@ -1226,7 +1280,7 @@ const Dashboard = () => {
                       </thead>
                       <tbody className="text-gray-600 text-sm divide-y divide-gray-50">
                         {filteredAndSortedEnquiries.map((enq) => (
-                          <tr key={enq._id} className="hover:bg-orange-50/30 transition-colors duration-200">
+                          <tr key={enq._id} className="hover:bg-orange-50/30 transition-colors duration-200 cursor-pointer" onClick={() => { setViewData(enq); setIsViewModalOpen(true); }}>
                             <td className="px-6 py-4 font-bold text-gray-800">{enq.name}</td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2 mb-1">
@@ -1246,8 +1300,8 @@ const Dashboard = () => {
                             </td>
                             <td className="px-6 py-4 text-center">
                               <div className="flex items-center justify-center gap-2">
-                                <button onClick={() => openEditModal(enq)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Contact"><Edit className="w-4 h-4" /></button>
-                                <button onClick={() => handleDeleteEnquiry(enq._id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete Contact"><Trash2 className="w-4 h-4" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); openEditModal(enq); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Contact"><Edit className="w-4 h-4" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); handleDeleteEnquiry(enq._id); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete Contact"><Trash2 className="w-4 h-4" /></button>
                               </div>
                             </td>
                           </tr>
@@ -1690,6 +1744,68 @@ const Dashboard = () => {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= SETTINGS SECTION ================= */}
+          {activeMenu === "settings" && (
+            <div className="space-y-6 max-w-3xl">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-start sm:items-center bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-800">Account Settings</h2>
+                  <p className="text-xs sm:text-sm text-gray-500">Manage your admin profile and security</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100">
+                <h3 className="text-lg font-bold text-[#391827] mb-6 flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-[#e6b854]" /> Change Admin Password
+                </h3>
+                <form onSubmit={handlePasswordChange} className="space-y-5 max-w-md">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Current Password</label>
+                    <input 
+                      type="password" 
+                      required 
+                      value={passwordData.currentPassword} 
+                      onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})} 
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#e6b854] focus:ring-1 focus:ring-[#e6b854] transition-all" 
+                      placeholder="Enter current password" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">New Password</label>
+                    <input 
+                      type="password" 
+                      required 
+                      value={passwordData.newPassword} 
+                      onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})} 
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#e6b854] focus:ring-1 focus:ring-[#e6b854] transition-all" 
+                      placeholder="Enter new password" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Confirm New Password</label>
+                    <input 
+                      type="password" 
+                      required 
+                      value={passwordData.confirmPassword} 
+                      onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})} 
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#e6b854] focus:ring-1 focus:ring-[#e6b854] transition-all" 
+                      placeholder="Confirm new password" 
+                    />
+                  </div>
+                  <div className="pt-2">
+                    <button 
+                      type="submit" 
+                      disabled={isChangingPassword} 
+                      className="bg-[#391827] hover:bg-[#2d111e] text-white px-8 py-3.5 rounded-xl font-bold transition-all shadow-md disabled:opacity-70 flex items-center justify-center gap-2"
+                    >
+                      {isChangingPassword ? "Updating..." : "Update Password"}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}

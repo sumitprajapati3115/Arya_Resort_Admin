@@ -7,23 +7,28 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
       const data = await apiService.post("/auth/login", { email, password });
 
-      if (data.success) {
+      if (data && data.success) {
         localStorage.setItem("adminToken", data.token);
         navigate("/dashboard");
       } else {
-        setError(data.message || "Invalid Email or Password");
+        setError(data?.message || "Invalid Email or Password");
       }
     } catch (err) {
-      setError("Backend is not running. Start the backend server.");
+      console.error("Login Error:", err);
+      setError(err?.response?.data?.message || "Backend is not running. Start the backend server.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -64,8 +69,12 @@ const Login = () => {
               />
             </div>
           </div>
-          <button type="submit" className="w-full bg-[#391827] hover:bg-[#2d111e] text-white font-bold py-3.5 rounded-xl transition-all shadow-md">
-            Secure Login
+          <button 
+            type="submit" 
+            disabled={isLoading}
+            className="w-full bg-[#391827] hover:bg-[#2d111e] text-white font-bold py-3.5 rounded-xl transition-all shadow-md disabled:opacity-70 flex justify-center items-center gap-2"
+          >
+            {isLoading ? "Logging in..." : "Secure Login"}
           </button>
         </form>
       </div>
